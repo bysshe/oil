@@ -145,7 +145,9 @@ def Options():
   return p
 
 
-def main(argv):
+def OpyMain(argv):
+  """Dispatch to the right action."""
+
   opts, argv = Options().parse_args(argv)
   if opts.grammar:
     gr = LoadGrammar(opts.grammar)
@@ -190,18 +192,18 @@ def main(argv):
 
   dr = driver.Driver(gr, convert=convert)
 
-  action = argv[1]
+  action = argv[0]
 
   if action == 'pgen2':
-    grammar_path = argv[2]
-    pickle_path = argv[3]
+    grammar_path = argv[1]
+    pickle_path = argv[2]
     WriteGrammar(grammar_path, pickle_path)
 
   elif action == 'stdlib-parse':
     # This is what the compiler/ package was written against.
     import parser
 
-    py_path = argv[2]
+    py_path = argv[1]
     with open(py_path) as f:
       st = parser.suite(f.read())
 
@@ -229,8 +231,8 @@ def main(argv):
       log('\tChildren: %d' % len(tree.children), file=sys.stderr)
 
   elif action == 'old-compile':
-    py_path = argv[2]
-    out_path = argv[3]
+    py_path = argv[1]
+    out_path = argv[2]
 
     if do_glue:
       py_parser = Pgen2PythonParser(dr, FILE_INPUT)
@@ -254,8 +256,8 @@ def main(argv):
     # 'opy compile' is pgen2 + compiler2
     # TODO: import compiler2
     #raise NotImplementedError
-    py_path = argv[2]
-    out_path = argv[3]
+    py_path = argv[1]
+    out_path = argv[2]
 
     if do_glue:
       py_parser = Pgen2PythonParser(dr, FILE_INPUT)
@@ -276,8 +278,8 @@ def main(argv):
       marshal.dump(co, out_f)
 
   elif action == 'compile2':
-    in_path = argv[2]
-    out_path = argv[3]
+    in_path = argv[1]
+    out_path = argv[2]
 
     from compiler2 import pycodegen as pycodegen2
     from misc import stdlib_compile
@@ -292,8 +294,8 @@ def main(argv):
     #logging.basicConfig(level=logging.DEBUG)
 
     # Compile and run, without writing pyc file
-    py_path = argv[2]
-    opy_argv = argv[2:]
+    py_path = argv[1]
+    opy_argv = argv[1:]
 
     if py_path.endswith('.py'):
       py_parser = Pgen2PythonParser(dr, FILE_INPUT)
@@ -326,9 +328,47 @@ def main(argv):
   # Node(prefix, children)
 
 
+class UsageError(RuntimeError):
+  """ Exception for incorrect command line usage. """
+
+
+_OPY_USAGE = 'Usage: opy_ MAIN [OPTION]... [ARG]...'
+
+def main(argv):
+  b = os.path.basename(argv[0])
+  main_name, _ = os.path.splitext(b)
+
+  if main_name in ('opy', 'opy_main'):
+    try:
+      first_arg = argv[1]
+    except IndexError:
+      raise UsageError('Missing name of main()')
+
+    if first_arg in ('-h', '--help'):
+      print(_OPY_USAGE, file=sys.stderr)
+      sys.exit(0)
+
+    main_name = first_arg
+    main_argv = argv[2:]
+  else:
+    main_argv = argv[1:]
+
+  # opy is treated like opy_main opy-run
+  if main_name in ('opy_', 'opy_main'):
+    return OpyMain(main_argv)
+  elif main_name == 'opy':
+    return OpyMain(['run'] + main_argv)
+  else:
+    raise UsageError('Invalid main %r' % main_name)
+
+
 if __name__ == '__main__':
   try:
     main(sys.argv)
+  except UsageError as e:
+    print(_OPY_USAGE, file=sys.stderr)
+    print(str(e), file=sys.stderr)
+    sys.exit(2)
   except RuntimeError as e:
     log('FATAL: %s', e)
     sys.exit(1)
