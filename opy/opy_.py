@@ -145,7 +145,7 @@ def Options():
   return p
 
 
-def OpyMain(argv):
+def main(argv):
   """Dispatch to the right action."""
 
   opts, argv = Options().parse_args(argv)
@@ -334,7 +334,7 @@ class UsageError(RuntimeError):
 
 _OPY_USAGE = 'Usage: opy_ MAIN [OPTION]... [ARG]...'
 
-def main(argv):
+def main2(argv):
   b = os.path.basename(argv[0])
   main_name, _ = os.path.splitext(b)
 
@@ -364,7 +364,7 @@ def main(argv):
 
 if __name__ == '__main__':
   try:
-    main(sys.argv)
+    main(sys.argv[1:])
   except UsageError as e:
     print(_OPY_USAGE, file=sys.stderr)
     print(str(e), file=sys.stderr)
