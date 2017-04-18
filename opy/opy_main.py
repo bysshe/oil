@@ -61,22 +61,6 @@ def HostStdlibNames():
   return names
 
 
-def _newer(a, b):
-    """Inquire whether file a was written since file b."""
-    if not os.path.exists(a):
-        return False
-    if not os.path.exists(b):
-        return True
-    return os.path.getmtime(a) >= os.path.getmtime(b)
-
-
-def _generate_pickle_name(gt):
-    head, tail = os.path.splitext(gt)
-    if tail == ".txt":
-        tail = ""
-    return head + tail + ".".join(map(str, sys.version_info)) + ".pickle"
-
-
 def LoadGrammar(pickle_path):
   """Load the grammar (maybe from a pickle)."""
   g = grammar.Grammar()
