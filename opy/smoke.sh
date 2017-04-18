@@ -201,10 +201,9 @@ _byterun() {
 # Wow!  Runs itself to parse itself... I need some VM instrumentation to make
 # sure it's not accidentally cheating or leaking.
 opy-parse-on-byterun() {
-  #local arg=$PWD/opy_main.py
   local arg=$PWD/testdata/hello_py2.py
   pushd _tmp/opy-opy
-  opyg run opy_main.pyc -g $GRAMMAR parse $arg
+  opyg run opy_.pyc -g $GRAMMAR parse $arg
   popd
 }
 
@@ -266,13 +265,13 @@ compare-bytecode() {
   echo done
 }
 
-# Compile opy_main a 100 times and make sure it's the same.
+# Compile opy_ a 100 times and make sure it's the same.
 #
 # NOTE: This doesn't surface all the problems.  Remember the fix was in
 # compiler2/misc.py:Set.
 determinism-loop() {
   local func=$1
-  local file=${2:-./opy_main.py}
+  local file=${2:-./opy_.py}
 
   mkdir -p _tmp/det
 

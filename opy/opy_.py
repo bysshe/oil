@@ -338,7 +338,7 @@ def main(argv):
   b = os.path.basename(argv[0])
   main_name, _ = os.path.splitext(b)
 
-  if main_name in ('opy', 'opy_main'):
+  if main_name in ('opy', 'opy_'):
     try:
       first_arg = argv[1]
     except IndexError:
