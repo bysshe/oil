@@ -53,6 +53,10 @@ _compile-tree() {
   md5-manifest $dest_tree
 }
 
+_fill-opy-tree() {
+  echo TODO: grammar pickle
+}
+
 compile-opy-tree() {
   local src=$PWD
   local files=( $(find $src \
@@ -68,6 +72,14 @@ compile-opy-tree() {
   _compile-tree $src _tmp/opy-opy/ opy "${files[@]}"
 }
 
+_fill-osh-tree() {
+  local dir=${1:-_tmp/osh-stdlib}
+  cp -v ../osh/osh.asdl $dir/osh
+  cp -v ../core/runtime.asdl $dir/core
+  cp -v ../asdl/arith.asdl $dir/asdl
+  ln -v -s -f $PWD/../core/libc.so $dir/core
+}
+
 compile-osh-tree() {
   local src=$(cd .. && echo $PWD)
   local files=( $(find $src \
@@ -79,19 +91,14 @@ compile-osh-tree() {
   _compile-tree $src _tmp/osh-ccompile/ ccompile "${files[@]}"
   _compile-tree $src _tmp/osh-opy/ opy "${files[@]}"
 
+  _fill-osh-tree _tmp/osh-ccompile/ 
+  _fill-osh-tree _tmp/osh-opy/
+
   #_compile-tree $src _tmp/osh-compile2/ compiler2 "${files[@]}"
 
   # Not deterministic!
   #_compile-tree $src _tmp/osh-compile2.gold/ compiler2 "${files[@]}"
   #_compile-tree $src _tmp/osh-stdlib/ stdlib "${files[@]}"
-}
-
-fill-osh-tree() {
-  local dir=${1:-_tmp/osh-stdlib}
-  cp -v ../osh/osh.asdl $dir/osh
-  cp -v ../core/runtime.asdl $dir/core
-  cp -v ../asdl/arith.asdl $dir/asdl
-  ln -v -s -f $PWD/../core/libc.so $dir/core
 }
 
 test-osh-tree() {
