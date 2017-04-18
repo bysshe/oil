@@ -204,7 +204,7 @@ opy-parse-on-byterun() {
   #local arg=$PWD/opy_main.py
   local arg=$PWD/testdata/hello_py2.py
   pushd _tmp/opy-opy
-  opy_ run opy_main.pyc $GRAMMAR parse $arg
+  opyg run opy_main.pyc -g $GRAMMAR parse $arg
   popd
 }
 
@@ -213,15 +213,15 @@ osh-parse-on-byterun() {
 
   ../bin/oil.py "${cmd[@]}"
   echo ---
-  opy_ run _tmp/osh-opy/bin/oil.pyc "${cmd[@]}"
+  opyg run _tmp/osh-opy/bin/oil.pyc "${cmd[@]}"
 }
 
 opy-hello2() {
-  opy_ run testdata/hello_py2.py
+  opyg run testdata/hello_py2.py
 }
 
 opy-hello3() {
-  opy_ run testdata/hello_py3.py
+  opyg run testdata/hello_py3.py
 }
 
 #

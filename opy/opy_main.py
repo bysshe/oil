@@ -5,8 +5,8 @@ opy_main.py
 from __future__ import print_function
 
 import cStringIO
-import codecs
 import io
+import optparse
 import os
 import sys
 import marshal
@@ -77,32 +77,23 @@ def _generate_pickle_name(gt):
     return head + tail + ".".join(map(str, sys.version_info)) + ".pickle"
 
 
-def load_grammar(gt="Grammar.txt", gp=None,
-                 save=True, force=False, logger=None):
-    """Load the grammar (maybe from a pickle)."""
-    if logger is None:
-        logger = logging.getLogger()
-    gp = _generate_pickle_name(gt) if gp is None else gp
-    if force or not _newer(gp, gt):
-        logger.info("Generating grammar tables from %s", gt)
-        g = pgen.generate_grammar(gt)
-        if save:
-            logger.info("Writing grammar tables to %s", gp)
-            try:
-                # calls pickle.dump on self.__dict__ after making it deterministic
-                g.dump(gp)
-            except OSError as e:
-                logger.info("Writing failed: %s", e)
-    else:
-        g = grammar.Grammar()
-        g.load(gp)  # pickle.load()
-    return g
+def LoadGrammar(pickle_path):
+  """Load the grammar (maybe from a pickle)."""
+  g = grammar.Grammar()
+  g.load(pickle_path)  # pickle.load()
+  return g
 
 
-_READ_SOURCE_AS_UNICODE = True
-# Not sure why this doesn't work?  It should be more like what the compiler
-# module expected.
-#_READ_SOURCE_AS_UNICODE = False
+def WriteGrammar(grammar_path, pickle_path):
+  log("Generating grammar tables from %s", grammar_path)
+  g = pgen.generate_grammar(grammar_path)
+  log("Writing grammar tables to %s", pickle_path)
+  try:
+    # calls pickle.dump on self.__dict__ after making it deterministic
+    g.dump(pickle_path)
+  except OSError as e:
+    log("Writing failed: %s", e)
+
 
 # Emulate the interface that Transformer expects from parsermodule.c.
 class Pgen2PythonParser:
@@ -156,21 +147,39 @@ class TupleTreePrinter:
       raise AssertionError(tu)
 
 
+def Options():
+  """Returns an option parser instance."""
+  p = optparse.OptionParser()
+
+  # NOTE: default command is None because empty string is valid.
+  p.add_option(
+      '-c', dest='command', default=None,
+      help='Python command to run')
+  p.add_option(
+      '-g', dest='grammar', default=None,
+      help='Grammar pickle file to use for parsing')
+  return p
+
+
 def main(argv):
-  grammar_path = argv[1]
-  # NOTE: This is cached as a pickle
-  gr = load_grammar(grammar_path)
-  FILE_INPUT = gr.symbol2number['file_input']
+  opts, argv = Options().parse_args(argv)
+  if opts.grammar:
+    gr = LoadGrammar(opts.grammar)
+    # In Python 2 code, always use from __future__ import print_function.
+    try:
+      del gr.keywords["print"]
+    except KeyError:
+      pass
 
-  symbols = Symbols(gr)
-  pytree.Init(symbols)  # for type_repr() pretty printing
-  transformer.Init(symbols)  # for _names and other dicts
+    FILE_INPUT = gr.symbol2number['file_input']
 
-  # In Python 2 code, always use from __future__ import print_function.
-  try:
-    del gr.keywords["print"]
-  except KeyError:
-    pass
+    symbols = Symbols(gr)
+    pytree.Init(symbols)  # for type_repr() pretty printing
+    transformer.Init(symbols)  # for _names and other dicts
+  else:
+    gr = None
+    FILE_INPUT = None
+    symbols = None
 
   #do_glue = False
   do_glue = True
@@ -197,13 +206,18 @@ def main(argv):
 
   dr = driver.Driver(gr, convert=convert)
 
-  action = argv[2]
+  action = argv[1]
 
-  if action == 'stdlib-parse':
+  if action == 'pgen2':
+    grammar_path = argv[2]
+    pickle_path = argv[3]
+    WriteGrammar(grammar_path, pickle_path)
+
+  elif action == 'stdlib-parse':
     # This is what the compiler/ package was written against.
     import parser
 
-    py_path = argv[3]
+    py_path = argv[2]
     with open(py_path) as f:
       st = parser.suite(f.read())
 
@@ -215,7 +229,7 @@ def main(argv):
     printer.Print(tree)
 
   elif action == 'parse':
-    py_path = argv[3]
+    py_path = argv[2]
     with open(py_path) as f:
       tokens = tokenize.generate_tokens(f.readline)
       tree = dr.parse_tokens(tokens, start_symbol=FILE_INPUT)
@@ -231,8 +245,8 @@ def main(argv):
       log('\tChildren: %d' % len(tree.children), file=sys.stderr)
 
   elif action == 'old-compile':
-    py_path = argv[3]
-    out_path = argv[4]
+    py_path = argv[2]
+    out_path = argv[3]
 
     if do_glue:
       py_parser = Pgen2PythonParser(dr, FILE_INPUT)
@@ -241,12 +255,7 @@ def main(argv):
     else:
       tr = transformer.Transformer()
 
-    # for Python 2.7 compatibility:
-    if _READ_SOURCE_AS_UNICODE:
-      f = codecs.open(py_path, encoding='utf-8')
-    else:
-      f = open(py_path)
-
+    f = open(py_path)
     contents = f.read()
     co = pycodegen.compile(contents, py_path, 'exec', transformer=tr)
     log("Code length: %d", len(co.co_code))
@@ -261,8 +270,8 @@ def main(argv):
     # 'opy compile' is pgen2 + compiler2
     # TODO: import compiler2
     #raise NotImplementedError
-    py_path = argv[3]
-    out_path = argv[4]
+    py_path = argv[2]
+    out_path = argv[3]
 
     if do_glue:
       py_parser = Pgen2PythonParser(dr, FILE_INPUT)
@@ -283,8 +292,8 @@ def main(argv):
       marshal.dump(co, out_f)
 
   elif action == 'compile2':
-    in_path = argv[3]
-    out_path = argv[4]
+    in_path = argv[2]
+    out_path = argv[3]
 
     from compiler2 import pycodegen as pycodegen2
     from misc import stdlib_compile
@@ -299,8 +308,8 @@ def main(argv):
     #logging.basicConfig(level=logging.DEBUG)
 
     # Compile and run, without writing pyc file
-    py_path = argv[3]
-    opy_argv = argv[3:]
+    py_path = argv[2]
+    opy_argv = argv[2:]
 
     if py_path.endswith('.py'):
       py_parser = Pgen2PythonParser(dr, FILE_INPUT)
