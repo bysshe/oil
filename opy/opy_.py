@@ -149,6 +149,7 @@ def main(argv):
   """Dispatch to the right action."""
 
   opts, argv = Options().parse_args(argv)
+
   if opts.grammar:
     gr = LoadGrammar(opts.grammar)
     # In Python 2 code, always use from __future__ import print_function.
@@ -215,7 +216,7 @@ def main(argv):
     printer.Print(tree)
 
   elif action == 'parse':
-    py_path = argv[2]
+    py_path = argv[1]
     with open(py_path) as f:
       tokens = tokenize.generate_tokens(f.readline)
       tree = dr.parse_tokens(tokens, start_symbol=FILE_INPUT)
